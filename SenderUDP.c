@@ -1,76 +1,66 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <winsock2.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <errno.h>
 
-#pragma comment(lib, "ws2_32.lib") // Winsock Library
-
-
+#define SERVER "127.0.0.1"
 #define BUFLEN 512
 #define PORT 8888
 
+void die(char *s){
+    perror(s);
+    exit(1);
+}
+
 int main() {
-    SOCKET s;
-    struct sockaddr_in server, si_other;
-    int slen, recv_len;
+    struct sockaddr_in si_other;
+    int s, i, slen=sizeof(si_other);
     char buf[BUFLEN];
-    WSADATA wsa;
+    char message[BUFLEN];
 
-    slen = sizeof(si_other);
-
-    //Initialise winsock
-    printf("\nInitialising Winsock...");
-    if (WSAStartup(MAKEWORD(2,2),&wsa) != 0){
-        printf("Failed. Error Code : %d", WSAGetLastError());
-        exit(EXIT_FAILURE);
+    if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1){
+        die("socket");
     }
-    printf("Initialised. \n");
 
-    //Create a socket
-    if((s = socket(AF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET){
-        printf("Could not create socket : %d", WSAGetLastError());
-        exit(EXIT_FAILURE);
+    memset((char *) &si_other, 0, sizeof(si_other));
+    si_other.sin_family = AF_INET;
+    si_other.sin_port = htons(PORT);
+
+    if (inet_aton(SERVER, &si_other.sin_addr) == 0){
+        fprintf(stderr, "inet_aton() failed\n");
+        exit(1);
     }
-    printf("Socket Created. \n");
 
-    //Prepare the sockaddr_in stucture
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(PORT);
+    memset(buf,'\0',BUFLEN);
 
-    //Bind
-    if (bind(s, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR){
-        printf("Bind failed with error code : %d", WSAGetLastError());
-        exit(EXIT_FAILURE);
-    }
-    
-    //Listen for data
-    while(1){
-        printf("Waiting for data...");
-        fflush(stdout);
+    while (1) {
+        printf("Enter message : ");
+        gets(message);
 
-        //clear buffer by filling null
-        memset(buf,'\0', BUFLEN);
+        //send message
 
-        //Try to receive data.
-        //Blocking call
-        if ((recv_len = recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen)) == SOCKET_ERROR){
-            printf("recvfrom() failed with error code : %d", WSAGetLastError());
-            exit(EXIT_FAILURE);
+        if (sendto(s, message, strlen(message), 0, (struct sockaddr *) &si_other, slen) ==-1){
+            die("sendto()");
         }
 
-        //print details of the client/peer and the data received
-        printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-        printf("Data: %s\n", buf);
+        //receive a reply and print
+        //clear buffer
 
-        //reply to the clien with the same data
-        if (sendto(s, buf, recv_len, 0, (struct sockaddr*) &si_other, slen) == SOCKET_ERROR) {
-            printf("sendto() failed with error code: %d", WSAGetLastError());
-            exit(EXIT_FAILURE);
+        memset(buf,'\0',BUFLEN);
+
+        if (recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen) == -1){
+            die("recvfrom()");
         }
+
+        puts(buf);
     }
 
-    closesocket(s);
-    WSACleanup();
-
+    close(s);
     return 0;
 }

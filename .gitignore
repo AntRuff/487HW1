@@ -84,3 +84,4 @@ replay_pid*
 
 # End of https://www.toptal.com/developers/gitignore/api/c,java
 .vscode/c_cpp_properties.json
+.vscode/settings.json
