@@ -29,6 +29,8 @@ public class ReceiverUDP {
 
             receive = new byte[65535];
         }
+
+        ds.close();
     }
 
     public static StringBuilder data(byte[] a) {

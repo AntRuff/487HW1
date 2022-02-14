@@ -1,63 +1,79 @@
 #include <stdio.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
 
-#define BUFLEN 512
+#define MAX 2000
 #define PORT 8888
 
-void die(char *s){
-    perror(s);
-    exit(1);
-}
-
 int main(void) {
-    struct sockaddr_in si_me, si_other;
+    int socket_desc, client_sock, client_size;
+    struct sockaddr_in server_addr, client_addr;
+    char server_message[MAX], client_message[MAX];
 
-    int s, i, slen = sizeof(si_other), recv_len;
-    char buf[BUFLEN];
+    // Clean Buffers
+    memset(server_message, '\0', sizeof(server_message));
+    memset(client_message, '\0', sizeof(client_message));
 
-    //UDP Socket
-    if((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1){
-        die("socket");
+    // Create socket
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (socket_desc < 0) {
+        printf("Error while creating socket\n");
+        return -1;
+    }
+    printf("Socket created successfully");
+
+    //Set port and IP
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    //Bind port and IP
+    if(bind(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        printf("Couldn't bind to the port\n");
+        return -1;
+    }
+    printf("Successfully bound\n");
+
+    //Listen for clients
+    if(listen(socket_desc, 1) < 0) {
+        printf("Error while listening\n");
+        return -1;
+    }
+    printf("\nListening for incomming connections......\n");
+
+    //Accept a connection
+    client_size = sizeof(client_addr);
+    client_sock = accept(socket_desc, (struct sockaddr*)&client_addr, &client_size);
+
+    if (client_sock < 0) {
+        printf("Can't accept\n");
+        return -1;
+    }
+    printf("Client connected at IP: %s and portL %i\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+    //Receive client message
+    if (recv(client_sock, client_message, sizeof(client_message), 0) < 0){
+        printf("Couldn't receive\n");
+        return -1;
+    }
+    printf("Msg from client: %s\n", client_message);
+
+    //Respond to client
+    strcpy(server_message, "This is the server message.");
+
+    if (send(client_sock, server_message, strlen(server_message), 0) < 0){
+        printf("Can't send\n");
+        return -1;
     }
 
-    //zero out the structure
-    memset((char *)&si_me, 0, sizeof(si_me));
+    close(client_sock);
+    close(socket_desc);
 
-    si_me.sin_family = AF_INET;
-    si_me.sin_port = htons(PORT);
-    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    //bind socket to port
-    if (bind (s, (struct sockaddr*) &si_me, sizeof(si_me)) == -1){
-        die("bind");
-    }
-
-    memset(buf,'\0',BUFLEN);
-
-    //listen for data
-    while (1) {
-        printf ("Waiting for data...");
-        fflush(stdout);
-
-        //blocking call to try and receive some data
-        if ((recv_len = recvfrom(s, buf, BUFLEN, 0, (struct sockadder *) &si_other, &slen)) == -1){
-            die("recvfrom()");
-        }
-
-        //print details and data received
-        printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-        printf("Data: %s\n", buf);
-
-        if (sendto(s, buf, recv_len, 0, (struct sockaddr*) &si_other, slen) == -1){
-            die("sendto()");
-        }
-
-        memset(buf,'\0',BUFLEN);
-    }
-
-    close(s);
     return 0;
 }
