@@ -40,6 +40,8 @@ int main() {
     memset(buf,'\0',BUFLEN);
 
     while (1) {
+        memset(buf,'\0',BUFLEN);
+        
         printf("Enter message : ");
         gets(message);
 
