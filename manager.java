@@ -1,17 +1,30 @@
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
+
+
+
 
 public class manager {
+
+    public static int PORT = 8888;
     public static void main(String[] args) {
-        ServerSocket server = null;
+        ServerSocket tcp = null;
+        DatagramSocket udp = null;
 
         try {
             //server listening to 8888
-            server = new ServerSocket(8888);
-            server.setReuseAddress(true);
+            /*tcp = new ServerSocket(PORT);
+            tcp.setReuseAddress(true);*/
 
+            udp = new DatagramSocket(PORT);
+            udp.setReuseAddress(true);
+
+            BeaconListener bl = new BeaconListener(udp);
+            new Thread(bl).start();
             //client requests
-            while (true) {
+            /*while (true) {
                 //socket to receive requests
                 Socket client = server.accept();
 
@@ -22,16 +35,16 @@ public class manager {
                 ClientHandler clientSock = new ClientHandler(client);
 
                 new Thread(clientSock).start();
-            }
+            }*/
 
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            if (server != null) {
-                try { server.close(); }
+        } /*finally {
+            if (tcp != null) {
+                try { tcp.close(); udp.close();}
                 catch (IOException e) { e.printStackTrace();}
             }
-        }
+        }*/
     }
 }
 
@@ -57,8 +70,8 @@ class ClientHandler implements Runnable {
             String line;
             while ((line = in.readLine()) != null) {
                 //writing the message from client
-                System.out.printf(" Send from the client: %s\n", line);
-                out.println(line);
+                System.out.printf(" Sent from the client: %s\n", line);
+                //out.println(line);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -76,4 +89,49 @@ class ClientHandler implements Runnable {
             }
         }
     }
+}
+
+
+class BeaconListener implements Runnable {
+    private final DatagramSocket clientSocket;
+    byte[] receive;
+
+    public BeaconListener(DatagramSocket ds){
+        this.clientSocket = ds;
+        receive = new byte[65535];
+    }
+
+    public void run() {
+        DatagramPacket DpReceive = null;
+        ReceiverUDP rUDP = new ReceiverUDP(receive, DpReceive, clientSocket);
+        while (true) {
+            try {
+                rUDP.listener();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+/*class AgentMonitor implements Runnable {
+    private List<Agent> agentList;
+    
+    public AgentMonitor() {
+        agentList = new ArrayList<Agent>();
+    }
+}
+
+class ClientAgent implements Runnable {
+    
+}*/
+
+class Agent {
+    int id;
+    int startTime;
+    int interval;
+    String ip;
+    int port;
+    int lastBeacon;
 }

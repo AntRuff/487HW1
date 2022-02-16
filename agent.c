@@ -2,12 +2,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <time.h>
 
 #include <arpa/inet.h>
 #include <unistd.h>
 
 #include <pthread.h>
 #include <semaphore.h>
+
+#include "SenderUDP.h"
+
+
+
+/*typedef struct BEACON {
+    int ID; // randomly generated during setup
+    int StartUpTime; //Time when client starts
+    int timeInterval; // Time period this beacon will be repeated
+    char IP[4]; //IP address of the client
+    int CmdPort; //the client listens to this port form cmd
+} beacon;*/
 
 void* clientthread(void* args){
     int client_request = *((int*) args);
@@ -38,39 +51,59 @@ void* clientthread(void* args){
     return 0;
 }
 
-int main () {
-    printf("1. Read\n");
-    printf("2. Write\n");
+void* BeaconSender(void* args) {
+    beacon b = *((beacon*) args);
+    //printf(b.IP);
 
-    //Input
-    int choice;
-    scanf("%d", &choice);
-    pthread_t tid;
+    //printf("%d\n", b.CmdPort);
 
-    //Create connection depending on the input.
-    switch(choice) {
-        case 1: {
-            int client_request = 1;
-            
-            //Create Thread
-            pthread_create(&tid, NULL, clientthread, &client_request);
-
-            sleep(20);
-            break;
+    /*if(connectToServer(b.CmdPort, b.IP) < 0){
+        printf("Error connecting to server.");
+        pthread_exit(NULL);
+    }*/
+    while (1){
+        if(sendUDP(b) < 0){
+            printf("Error sending the beacon.");
+            pthread_exit(NULL);
         }
-        case 2: {
-            int client_request = 2;
-
-            pthread_create(&tid, NULL, clientthread, &client_request);
-
-            sleep(20);
-            break;
-        }
-        default:
-            printf("Invalid Input\n");
-            break;
+        sleep(60);
     }
+}
 
-    //Suspend execution of thread
-    pthread_join(tid, NULL);
+void GetLocalOS(char OS[16], int *valid) {
+
+}
+
+void GetLocalTime(int *time, int *valid) {
+
+}
+
+void* CmdAgent() {
+    
+}
+
+int main () {
+    char* server = "127.0.0.1";
+    void *a;
+    char buffer[4];
+    inet_pton(AF_INET, server, a);
+    srand(time(NULL));
+    beacon b;
+    b.ID = rand() % 10000;
+    b.StartUpTime = (int) time(0);
+    inet_ntop(AF_INET, a, b.IP, INET_ADDRSTRLEN);
+    b.timeInterval = 60;
+    b.CmdPort = 8888;
+
+    //printf(b.IP);
+    //memcpy(&b.IP, &buffer, sizeof(buffer));
+    //printf(b.IP);
+    
+    printf("%d\n", b.StartUpTime);
+    pthread_t b_tid, c_tid;
+
+    pthread_create(&b_tid, NULL, BeaconSender, &b);
+    //pthread_create(&c_tid, NULL, CmdAgent, 0);
+    pthread_join(b_tid, NULL);
+    return 0;
 }

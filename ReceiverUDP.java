@@ -1,49 +1,52 @@
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
 //Send
 public class ReceiverUDP {
-    public static void main(String[] args) throws IOException {
-        // Create a socket to listen to port 8888
-        DatagramSocket ds = new DatagramSocket(8888);
-        byte[] receive = new byte[65535];
+    DatagramSocket ds;
+    byte[] receive;
+    DatagramPacket DpReceive;
 
-        DatagramPacket DpReceive = null;
-        while(true) {
-            // Create a packet to receive the data
-            DpReceive = new DatagramPacket(receive, receive.length);
-
-            // Receive the data in the byte buffer
-            ds.receive(DpReceive);
-
-            System.out.println("Client:-" + data(receive));
-
-            if(data(receive).toString().equals("bye")) {
-                System.out.println("Client sent bye........EXITING");
-                break;
-            }
-
-            receive = new byte[65535];
-        }
-
-        ds.close();
+    public ReceiverUDP(byte[] receive, DatagramPacket DpReceive, DatagramSocket ds){
+        this.ds = ds;
+        this.receive = receive;
+        this.DpReceive = DpReceive;
     }
 
-    public static StringBuilder data(byte[] a) {
-        if (a == null) {
-            return null;
-        }
-        StringBuilder ret = new StringBuilder();
-        int i = 0;
-        while (a[i] != 0){
-            ret.append((char) a[i]);
-            i++;
-        }
-        return ret;
+    public void listener() throws IOException{
+        DpReceive = new DatagramPacket(receive, receive.length);
+
+        ds.receive(DpReceive);
+
+        Agent a = parseAgent(DpReceive);
+    }
+
+    private Agent parseAgent(DatagramPacket packet) throws IOException{
+        receive = packet.getData();
+
+        ByteArrayInputStream bais = new ByteArrayInputStream(receive);
+        DataInput di = new DataInputStream(bais);
+
+        int ID = di.readInt();
+        int startTime = di.readInt();
+        int timeInterval = di.readInt();
+        byte[] IP = new byte[20];
+        di.readFully(IP);
+        int port = di.readInt();
+        System.out.println("" + ID + "," + startTime + "," + timeInterval
+            + "," + IP + "," + port);
+
+        return null;
     }
 
 }

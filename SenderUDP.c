@@ -9,60 +9,59 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define SERVER "127.0.0.1"
-#define BUFLEN 512
-#define PORT 8888
+
+
+typedef struct BEACON {
+    int ID; // randomly generated during setup
+    int StartUpTime; //Time when client starts
+    int timeInterval; // Time period this beacon will be repeated
+    char IP[16]; //IP address of the client
+    int CmdPort; //the client listens to this port form cmd
+} beacon;
+
+struct sockaddr_in si_other;
+int s, i, slen=sizeof(si_other);
+char *buffer;
+
 
 void die(char *s){
     perror(s);
-    exit(1);
 }
 
-int main() {
-    struct sockaddr_in si_other;
-    int s, i, slen=sizeof(si_other);
-    char buf[BUFLEN];
-    char message[BUFLEN];
+int sendUDP(beacon b){
 
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1){
         die("socket");
+        return -1;
     }
 
     memset((char *) &si_other, 0, sizeof(si_other));
     si_other.sin_family = AF_INET;
-    si_other.sin_port = htons(PORT);
+    si_other.sin_port = htons(b.CmdPort);
+    //printf(IP);
 
-    if (inet_aton(SERVER, &si_other.sin_addr) == 0){
+    if (inet_pton(AF_INET, b.IP, &si_other.sin_addr) == 0){
         fprintf(stderr, "inet_aton() failed\n");
-        exit(1);
+        return -1;
     }
 
-    memset(buf,'\0',BUFLEN);
+    
+    while(1) {
+        printf("%d\n", b.StartUpTime);
+        buffer = (char*) malloc(sizeof(beacon));
+        int i;
+        memcpy(buffer, (const unsigned char*)&b, sizeof(b));
 
-    while (1) {
-        memset(buf,'\0',BUFLEN);
-        
-        printf("Enter message : ");
-        gets(message);
-
-        //send message
-
-        if (sendto(s, message, strlen(message), 0, (struct sockaddr *) &si_other, slen) ==-1){
-            die("sendto()");
+        for(i = 0; i < sizeof(b); i++){
+            printf("%02X ", buffer[i]);
         }
+        printf("\n");
 
-        //receive a reply and print
-        //clear buffer
-
-        memset(buf,'\0',BUFLEN);
-
-        if (recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen) == -1){
-            die("recvfrom()");
+        if (sendto(s, buffer, sizeof(beacon), 0 , (struct sockaddr*)&si_other, sizeof(si_other)) < 0){
+            die("SendTo()");
+            return -1;
         }
-
-        puts(buf);
+        memset(buffer, '\0', sizeof(beacon));
+        sleep(60);
     }
-
-    close(s);
-    return 0;
 }
