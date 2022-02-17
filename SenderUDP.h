@@ -9,8 +9,6 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#pragma scalar_storage_order little-endian
-
 typedef struct BEACON {
     int ID; // randomly generated during setup
     int StartUpTime; //Time when client starts
@@ -19,5 +17,4 @@ typedef struct BEACON {
     int CmdPort; //the client listens to this port form cmd
 } beacon;
 
-int connectToServer(int PORT, char IP[4]);
 int sendUDP(beacon b);

@@ -1,6 +1,6 @@
-OBJS	= agent.o SenderUDP.o
-SOURCE	= agent.c SenderUDP.c
-HEADER	= SenderUDP.h
+OBJS	= agent.o SenderUDP.o ServerTCP.o
+SOURCE	= agent.c SenderUDP.c ServerTCP.c
+HEADER	= SenderUDP.h ServerTCP.h
 OUT	= agent
 CC	 = gcc
 FLAGS	 = -g -c -Wall
@@ -15,6 +15,8 @@ agent.o: agent.c
 SenderUDP.o: SenderUDP.c
 	$(CC) $(FLAGS) SenderUDP.c -std=c99
 
+ServerTCP.o: ServerTCP.c
+	$(CC) $(FLAGS) ServerTCP.c -std=c99
 
 clean:
 	rm -f $(OBJS) $(OUT)

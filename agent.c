@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/utsname.h>
 #include <time.h>
 
 #include <arpa/inet.h>
@@ -10,8 +11,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#include "SenderUDP.h"
-
+//#include "SenderUDP.h"
+#include "ServerTCP.h"
 
 
 /*typedef struct BEACON {
@@ -21,35 +22,6 @@
     char IP[4]; //IP address of the client
     int CmdPort; //the client listens to this port form cmd
 } beacon;*/
-
-void* clientthread(void* args){
-    int client_request = *((int*) args);
-    int network_socket;
-    //Create socket stream
-    network_socket = socket(AF_INET, SOCK_STREAM, 0);
-
-    struct sockaddr_in server_address;
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = INADDR_ANY;
-    server_address.sin_port = htons(8888);
-    // Create socket connection
-    int connection_status = connect(network_socket, (struct sockaddr*)&server_address, sizeof(server_address));
-
-    if (connection_status < 0) {
-        puts("Error\n");
-        return 0;
-    }
-
-    printf("Connection established\n");
-
-    //send data
-    send(network_socket, &client_request, sizeof(client_request), 0);
-
-    close(network_socket);
-    pthread_exit(NULL);
-
-    return 0;
-}
 
 void* BeaconSender(void* args) {
     beacon b = *((beacon*) args);
@@ -71,21 +43,62 @@ void* BeaconSender(void* args) {
 }
 
 void GetLocalOS(char OS[16], int *valid) {
-
+    struct utsname name;
+    if (uname(&name)) {
+        *valid = 0;
+        return;
+    }
+    strcpy(OS, name.sysname);
+    *valid = 1;
 }
 
-void GetLocalTime(int *time, int *valid) {
-
+void GetLocalTime(int *localtime, int *valid) {
+    *localtime = (int) time(0);
+    *valid = 1;
 }
 
-void* CmdAgent() {
+void* CmdAgent(void* args) {
+    beacon b = *((beacon*) args);
     
+    if (createAndBind(b) < 0){
+        printf("Errors with TCP socket.");
+        exit(1);
+    };
+    while(1){
+        int cmd = receiveMessage();
+        printf("%d\n", cmd);
+        char OS[16];
+        int valid;
+        int localtime;
+        switch (cmd) {
+            case 1: 
+                GetLocalOS(OS, &valid);
+                if (valid){
+                    respondToServer(OS);
+                }
+                else { 
+                    respondToServer("There was an error retreiving the OS of the agent.");
+                    }
+                break;
+            case 2:
+                GetLocalTime(&localtime, &valid);
+                if (valid) {
+                    char buffer[4];
+                    respondToServer(memcpy(buffer, localtime, sizeof(localtime)));
+                }
+                else { respondToServer("There was an error retreiving the time of the agent.");}
+                break;
+            default:
+                //Error
+                break;
+        }
+    }
+    closeSockets();
 }
 
 int main () {
     char* server = "127.0.0.1";
     void *a;
-    char buffer[4];
     inet_pton(AF_INET, server, a);
     srand(time(NULL));
     beacon b;
@@ -98,12 +111,11 @@ int main () {
     //printf(b.IP);
     //memcpy(&b.IP, &buffer, sizeof(buffer));
     //printf(b.IP);
-    
-    printf("%d\n", b.StartUpTime);
     pthread_t b_tid, c_tid;
 
     pthread_create(&b_tid, NULL, BeaconSender, &b);
-    //pthread_create(&c_tid, NULL, CmdAgent, 0);
+    pthread_create(&c_tid, NULL, CmdAgent, &b);
     pthread_join(b_tid, NULL);
+    pthread_join(c_tid, NULL);
     return 0;
 }

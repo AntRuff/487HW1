@@ -47,7 +47,7 @@ int sendUDP(beacon b){
 
     
     while(1) {
-        printf("%d\n", b.StartUpTime);
+        //printf("%d\n", b.StartUpTime);
         buffer = (char*) malloc(sizeof(beacon));
         int i;
         memcpy(buffer, (const unsigned char*)&b, sizeof(b));

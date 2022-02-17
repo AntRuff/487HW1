@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 
 //Send
 public class ReceiverUDP {
@@ -23,12 +24,16 @@ public class ReceiverUDP {
         this.DpReceive = DpReceive;
     }
 
-    public void listener() throws IOException{
+    public Agent listener() throws IOException{
         DpReceive = new DatagramPacket(receive, receive.length);
 
         ds.receive(DpReceive);
 
         Agent a = parseAgent(DpReceive);
+
+        a.updateBeacon(System.currentTimeMillis()/1000);
+
+        return a;
     }
 
     private Agent parseAgent(DatagramPacket packet) throws IOException{
@@ -37,16 +42,27 @@ public class ReceiverUDP {
         ByteArrayInputStream bais = new ByteArrayInputStream(receive);
         DataInput di = new DataInputStream(bais);
 
-        int ID = di.readInt();
-        int startTime = di.readInt();
-        int timeInterval = di.readInt();
-        byte[] IP = new byte[20];
-        di.readFully(IP);
-        int port = di.readInt();
-        System.out.println("" + ID + "," + startTime + "," + timeInterval
-            + "," + IP + "," + port);
+        int readID = di.readInt();
+        readID = Integer.reverseBytes(readID);
+        long ID = Integer.toUnsignedLong(readID);
 
-        return null;
+        int readStartTime = di.readInt();
+        readStartTime = Integer.reverseBytes(readStartTime);
+        long startTime = Integer.toUnsignedLong(readStartTime);
+
+        int readTimeInterval = di.readInt();
+        readTimeInterval = Integer.reverseBytes(readTimeInterval);
+        long timeInterval = Integer.toUnsignedLong(readTimeInterval);
+
+        byte[] readIP = new byte[16];
+        di.readFully(readIP);
+        String IP = new String(ByteBuffer.wrap(readIP).array());
+
+        int readPort = di.readInt();
+        readPort = Integer.reverseBytes(readPort);
+        long port = Integer.toUnsignedLong(readPort);
+
+        return (new Agent(ID, startTime, timeInterval, IP, port));
     }
 
 }

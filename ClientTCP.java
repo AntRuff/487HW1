@@ -8,18 +8,30 @@ import java.io.*;
 import java.net.*;
 
 public class ClientTCP {
+
+    int port;
+    String IP;
+
+    public ClientTCP (int p, String i){
+        this.port = p;
+        this.IP = i;
+    }
+
     public void run() {
         try {
-            int serverPort = 8888;
-            InetAddress host = InetAddress.getByName("127.0.0.1");
-            System.out.println("Connecting to server on port " + serverPort);
+            int serverPort = port;
+            InetAddress host = InetAddress.getByName(IP);
+            System.out.println("Connecting to agent on port " + serverPort);
 
             Socket socket = new Socket(host, serverPort);
-            System.out.println("Just connected to " + socket.getRemoteSocketAddress());
+            //System.out.println("Just connected to " + socket.getRemoteSocketAddress());
             PrintWriter toServer = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader fromServer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            toServer.println("Hello from " + socket.getLocalSocketAddress());
+            toServer.println("void GetLocalOS(char OS[16], int *valid)");
             String line = fromServer.readLine();
+            System.out.println("Client received: " + line + " from Server");
+            toServer.println("void GetLocalTime(int *time, int *valid)");
+            line = fromServer.readLine();
             System.out.println("Client received: " + line + " from Server");
             toServer.close();
             fromServer.close();
@@ -29,10 +41,5 @@ public class ClientTCP {
         } catch(IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static void main(String[] args) {
-        ClientTCP client = new ClientTCP();
-        client.run();
     }
 }

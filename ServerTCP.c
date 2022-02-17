@@ -7,14 +7,16 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
+#include "SenderUDP.h"
+
 #define MAX 2000
 #define PORT 8888
 
-int main(void) {
-    int socket_desc, client_sock, client_size;
-    struct sockaddr_in server_addr, client_addr;
-    char server_message[MAX], client_message[MAX];
+int socket_desc, client_sock, client_size;
+struct sockaddr_in server_addr, client_addr;
+char server_message[MAX], client_message[MAX];
 
+int createAndBind(beacon b) {
     // Clean Buffers
     memset(server_message, '\0', sizeof(server_message));
     memset(client_message, '\0', sizeof(client_message));
@@ -29,9 +31,10 @@ int main(void) {
     printf("Socket created successfully");
 
     //Set port and IP
+    printf("%d\n", b.CmdPort);
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_addr.sin_port = htons(b.CmdPort);
+    server_addr.sin_addr.s_addr = inet_addr(b.IP);
 
     //Bind port and IP
     if(bind(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
@@ -55,25 +58,37 @@ int main(void) {
         printf("Can't accept\n");
         return -1;
     }
-    printf("Client connected at IP: %s and portL %i\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
+    return 0;
+}
+
+int receiveMessage() {
     //Receive client message
     if (recv(client_sock, client_message, sizeof(client_message), 0) < 0){
         printf("Couldn't receive\n");
         return -1;
     }
-    printf("Msg from client: %s\n", client_message);
-
-    //Respond to client
-    strcpy(server_message, "This is the server message.");
-
-    if (send(client_sock, server_message, strlen(server_message), 0) < 0){
-        printf("Can't send\n");
-        return -1;
+    printf("%s\n", client_message);
+    char* comp1 = "void GetLocalOS(char OS[16], int *valid)";
+    char* comp2 = "void GetLocalTime(int *time, int *valid)";
+    if (strncmp(client_message, comp1, 40) == 0){
+        return 1;
     }
+    if (strncmp(client_message, comp2, 40) == 0) {
+        return 2;
+    }
+    ;
+    return 0;
+}
 
+void respondToServer(char* buffer) {
+    if (send(client_sock, buffer, strlen(buffer), 0) < 0){
+        printf("Can't send\n");
+        exit(1);
+    }
+}
+
+void closeSockets() {
     close(client_sock);
     close(socket_desc);
-
-    return 0;
 }
